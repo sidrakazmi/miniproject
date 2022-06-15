@@ -1,0 +1,51 @@
+image: maven:3.6.3-openjdk-11-slim
+
+stages:
+    - test
+    - build
+    - staging
+
+
+variables:
+    PROPERTY_VALUES: "-Dport=$port"
+
+cache:
+  paths:
+    - ./.m2/repository
+  key: "$CI_COMMIT_REF_NAME"
+
+test_job:
+    stage: test
+    variables:
+        MAVEN_CLI_OPTS: "-Dmaven.repo.local=./.m2/repository"
+    script:
+        - mvn $MAVEN_CLI_OPTS $PROPERTY_VALUES test
+
+build_job:
+    stage: build
+    variables:
+        MAVEN_CLI_OPTS: "-DskipTests -Dmaven.repo.local=./.m2/repository"
+    script:
+        - mvn $MAVEN_CLI_OPTS $PROPERTY_VALUES package
+    artifacts:
+        paths:
+            - target/foreigncurrencyapi-0.0.1-SNAPSHOT.jar
+        expire_in: 1 week
+    only:
+        - master
+
+staging_job:
+    image: docker:19.03
+    stage: staging
+    services:
+        - docker:dind
+    before_script:
+        - docker login -u "$CI_REGISTRY_USER" -p "$CI_REGISTRY_PASSWORD" $CI_REGISTRY
+    script:
+        - docker pull $CI_REGISTRY_IMAGE || true
+        - docker build --cache-from $CI_REGISTRY_IMAGE:latest --tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA --tag $CI_REGISTRY_IMAGE:latest .
+        - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+        - docker push $CI_REGISTRY_IMAGE:latest
+    only:
+        - master
+

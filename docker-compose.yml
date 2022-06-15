@@ -1,0 +1,78 @@
+version: "3.0"
+services:
+  common-api:
+    hostname: common-api
+    container_name: common-api
+    build: ./common-api/
+    #image : registry.gitlab.com/
+    command: tail -F anything
+    privileged: true
+    ports:
+      - 8889:8889
+    depends_on:
+      bussiness-db:
+        condition: service_healthy
+    networks:
+      labnet.io:
+        ipv4_address: 10.10.0.3
+
+  bussiness-db:
+    hostname: bussiness-db
+    container_name: bussiness-db
+    build: ./bussiness-db/
+   # image : 
+    privileged: true
+    healthcheck: 
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]      
+      timeout: 20s
+      retries: 10
+    networks:
+      labnet.io:
+        ipv4_address: 10.10.0.12
+
+  recommendation-service:
+    hostname: recommendation-service
+    container_name: recommendation-service
+    build: ./recommendation-service/
+    command: tail -F anything
+    privileged: true
+    ports:
+      - 8001:8001
+    depends_on:
+      bussiness-db:
+        condition: service_healthy
+    networks:
+      labnet.io:
+        ipv4_address: 10.10.0.6
+
+  customersupport-service:
+    hostname: customersupport-service
+    container_name: customersupport-service
+    build: ./customersupport-service/
+    command: tail -F anything
+    privileged: true
+    depends_on:
+      bussiness-db:
+        condition: service_healthy
+    networks:
+      labnet.io:
+        ipv4_address: 10.10.0.4
+
+  foreigncurrency:
+    hostname: foreigncurrency
+    container_name: foreigncurrency
+    build: ./foreigncurrency/
+    command: tail -F anything
+    privileged: true
+    networks:
+      labnet.io:
+        ipv4_address: 10.10.0.5
+
+networks:
+  labnet.io:
+    name: labnet.io
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.10.0.0/16
+          gateway: 10.10.0.1
